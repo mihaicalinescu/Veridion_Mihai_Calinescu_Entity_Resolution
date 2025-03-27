@@ -1,9 +1,6 @@
 import pandas as pd
 from fuzzywuzzy import fuzz
 import networkx as nx
-from collections import defaultdict
-
-from ListaDescrescatoare import lista
 
 df = pd.read_csv("veridion_entity_resolution_challenge.csv")
 cols = ['company_name', 'company_legal_names', 'website_domain', "main_city", "main_country_code"]
