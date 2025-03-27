@@ -71,3 +71,7 @@ for cluster_id in df_clustered['cluster_id'].unique()[:3]:  # Afișăm primele 3
     for _, row in cluster.iterrows():
         print(f"- {row['company_name']} (website: {row['website_domain']})")
 
+# Saving in CSV file
+output_file = "deduplicated_companies.csv"
+df_clustered.to_csv(output_file, index=False)
+print(f"\nRezultatele au fost salvate în '{output_file}'.")
