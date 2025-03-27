@@ -1,7 +1,9 @@
-from multiprocessing.reduction import duplicate
-
 import pandas as pd
 from fuzzywuzzy import fuzz
+import networkx as nx
+from collections import defaultdict
+
+from ListaDescrescatoare import lista
 
 df = pd.read_csv("veridion_entity_resolution_challenge.csv")
 cols = ['company_name', 'company_legal_names', 'website_domain', "main_city", "main_country_code"]
@@ -25,36 +27,47 @@ df["website_domain_clean"] = (
 )
 
 
-def find_duplicates(df, threshold=85):
-    duplicates = []
-    #Let's optimize and group by country and city
+def cluster_duplicates(df, threshold=85):
+    # Let's group duplicated records using similarity of name or domain
+    graph = nx.Graph()
+
+    # Let's add all recordings as nodes
     grouped = df.groupby(['main_country_code', 'main_city'])
     for _, group in grouped:
-        group = group.reset_index(drop=True)
-        for i in range(len(group)):
-            for j in range(i+1, len(group)):
+        group_indices = group.index
+        for i in range(len(group_indices)):
+            for j in range(i+1, len(group_indices)):
+                idx_i = group_indices[i]
+                idx_j = group_indices[j]
+
                 name_i = df.iloc[i]["company_name_clean"]
                 name_j = df.iloc[j]["company_name_clean"]
-                if not name_i or not name_j:
-                    continue
+
                 similarity = fuzz.ratio(name_i, name_j)
-                website_match = group.loc[i, "website_domain_clean"] == group.loc[j, "website_domain_clean"]
+                website_match = (df.loc[idx_i, "website_domain_clean"] ==
+                                df.loc[idx_j, "website_domain_clean"])
                 if similarity > threshold or website_match:
-                    duplicates.append((
-                        group.loc[i, "company_name"],
-                        group.loc[j, "company_name"],
-                        similarity,
-                        website_match
-                    ))
-    return duplicates
+                    graph.add_edge(idx_i, idx_j)
 
-duplicates = find_duplicates(df)
-print(f'I found {len(duplicates)} potential duplicates')
+    # here we identify clusters
+    clusters = list(nx.connected_components(graph))
 
-# Seeing the found duplicates
-for dup in duplicates:
-    print(f"\nSimilaritate {dup[2]}% între:")
-    print(f"- {dup[0]}")
-    print(f"- {dup[1]}")
-    print(f"Website match: {dup[3]}")
+    # each cluster gets a specific id
+    cluster_mapping = {}
+    for cluster_id, cluster in enumerate(clusters):
+        for idx in cluster:
+            cluster_mapping[idx] = cluster_id
+    df['cluster_id'] = df.index.map(cluster_mapping)
+    return df
+
+df_clustered = cluster_duplicates(df)
+
+# Showing all results
+print(f"Număr total de companii unice identificate: {df_clustered['cluster_id'].nunique()}")
+print("\nExemple de clustere (duplicate):")
+for cluster_id in df_clustered['cluster_id'].unique()[:3]:  # Afișăm primele 3 clustere
+    cluster = df_clustered[df_clustered['cluster_id'] == cluster_id]
+    print(f"\nCluster {cluster_id} (size: {len(cluster)}):")
+    for _, row in cluster.iterrows():
+        print(f"- {row['company_name']} (website: {row['website_domain']})")
 
