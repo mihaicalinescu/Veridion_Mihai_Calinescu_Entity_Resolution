@@ -27,35 +27,34 @@ df["website_domain_clean"] = (
 
 def find_duplicates(df, threshold=85):
     duplicates = []
-    for i in range(len(df)):
-        for j in range(i+1, len(df)):
-            # conditions for avoiding unnecessary comparison
-            name_i = df.iloc[i]["company_name_clean"]
-            name_j = df.iloc[j]["company_name_clean"]
-
-            if not name_i or not name_j:
-                continue
-
-            same_country = df.iloc[i]["main_country_code"] == df.iloc[j]["main_country_code"]
-            same_city = df.iloc[i]["main_city"] == df.iloc[j]["main_city"]
-
-
-            if same_country and same_city:
-                name_similarity = fuzz.ratio(name_i, name_j)
-                website_match = df.iloc[i]["website_domain_clean"] == df.iloc[j]["website_domain_clean"]
-
-                if name_similarity > threshold or website_match:
-                    duplicates.append((i, j, name_similarity, website_match))
-
+    #Let's optimize and group by country and city
+    grouped = df.groupby(['main_country_code', 'main_city'])
+    for _, group in grouped:
+        group = group.reset_index(drop=True)
+        for i in range(len(group)):
+            for j in range(i+1, len(group)):
+                name_i = df.iloc[i]["company_name_clean"]
+                name_j = df.iloc[j]["company_name_clean"]
+                if not name_i or not name_j:
+                    continue
+                similarity = fuzz.ratio(name_i, name_j)
+                website_match = group.loc[i, "website_domain_clean"] == group.loc[j, "website_domain_clean"]
+                if similarity > threshold or website_match:
+                    duplicates.append((
+                        group.loc[i, "company_name"],
+                        group.loc[j, "company_name"],
+                        similarity,
+                        website_match
+                    ))
     return duplicates
 
 duplicates = find_duplicates(df)
 print(f'I found {len(duplicates)} potential duplicates')
 
 # Seeing the found duplicates
-for i, j, similarity, website_match in duplicates:
-    print(f"\nPotrivire între:")
-    print(f"- {df.iloc[i]['company_name']} ({df.iloc[i]['main_city']}, {df.iloc[i]['website_domain']})")
-    print(f"- {df.iloc[j]['company_name']} ({df.iloc[j]['main_city']}, {df.iloc[j]['website_domain']})")
-    print(f"Similaritate nume: {similarity}%, Website match: {website_match}")
+for dup in duplicates:
+    print(f"\nSimilaritate {dup[2]}% între:")
+    print(f"- {dup[0]}")
+    print(f"- {dup[1]}")
+    print(f"Website match: {dup[3]}")
 
