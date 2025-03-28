@@ -46,10 +46,10 @@ def cluster_duplicates(df, threshold=85):
                 if similarity > threshold or website_match:
                     graph.add_edge(idx_i, idx_j)
 
-    # here we identify clusters
+    # Here we identify clusters
     clusters = list(nx.connected_components(graph))
 
-    # each cluster gets a specific id
+    # Each cluster gets a specific id
     cluster_mapping = {}
     for cluster_id, cluster in enumerate(clusters):
         for idx in cluster:
@@ -62,7 +62,7 @@ df_clustered = cluster_duplicates(df)
 # Showing all results
 print(f"Număr total de companii unice identificate: {df_clustered['cluster_id'].nunique()}")
 print("\nExemple de clustere (duplicate):")
-for cluster_id in df_clustered['cluster_id'].unique()[:3]:  # Afișăm primele 3 clustere
+for cluster_id in df_clustered['cluster_id'].unique()[:3]:  # Showing just the first 3 clusters
     cluster = df_clustered[df_clustered['cluster_id'] == cluster_id]
     print(f"\nCluster {cluster_id} (size: {len(cluster)}):")
     for _, row in cluster.iterrows():
